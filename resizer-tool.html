@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ปรับขนาดไฟล์ — รูปภาพ & PDF</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f3;
+    color: #1a1a18;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .wrapper { max-width: 600px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; }
+
+  .tab-bar { display: flex; border-bottom: 1px solid #e0e0dc; margin-bottom: 1.5rem; }
+  .tab-btn { flex: 1; padding: 10px; font-size: 14px; font-weight: 500; border: none; background: transparent; color: #888; cursor: pointer; border-bottom: 2.5px solid transparent; transition: all .15s; }
+  .tab-btn.active { color: #1a1a18; border-bottom-color: #1a1a18; }
+
+  .drop-zone { border: 1.5px dashed #ccc; border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; background: #fff; transition: background .15s, border-color .15s; }
+  .drop-zone:hover, .drop-zone.drag-over { background: #eef4ff; border-color: #6a9cf8; }
+  .drop-icon { font-size: 36px; display: block; margin-bottom: 10px; }
+  .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .drop-sub { font-size: 13px; color: #888; }
+
+  .card { background: #fff; border: 1px solid #e8e8e4; border-radius: 12px; padding: 1rem 1.25rem; }
+  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: #f9f9f7; border: 1px solid #e8e8e4; border-radius: 10px; padding: .85rem 1rem; }
+  .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .stat-val { font-size: 18px; font-weight: 600; }
+  .stat-sub { font-size: 12px; color: #999; margin-top: 3px; }
+
+  .row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 13px; color: #666; min-width: 100px; }
+  select, input[type="number"] {
+    flex: 1; height: 36px; border-radius: 8px; border: 1px solid #ddd;
+    background: #fff; color: #1a1a18; padding: 0 10px; font-size: 14px;
+    font-family: inherit;
+  }
+  select:focus, input[type="number"]:focus { outline: none; border-color: #6a9cf8; }
+  input[type="range"] { flex: 1; accent-color: #1a1a18; }
+  .range-val { font-size: 14px; font-weight: 600; min-width: 42px; text-align: right; }
+  .lock-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: #666; }
+
+  section.controls { display: none; margin-top: 1.5rem; display: none; }
+  .stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+
+  .btn-main {
+    width: 100%; padding: 11px; border-radius: 9px; border: none;
+    background: #1a1a18; color: #fff; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity .15s; font-family: inherit; margin-top: 4px;
+  }
+  .btn-main:hover { opacity: .82; }
+  .btn-main:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-dl {
+    width: 100%; padding: 11px; border-radius: 9px; border: 1px solid #bde5c8;
+    background: #edf9f1; color: #1d7a45; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; margin-top: 10px; transition: opacity .15s;
+  }
+  .btn-dl:hover { opacity: .82; }
+  .btn-reset {
+    width: 100%; padding: 9px; border-radius: 9px; border: 1px solid #ddd;
+    background: transparent; color: #888; font-size: 13px; cursor: pointer;
+    font-family: inherit; margin-top: 8px;
+  }
+  .btn-reset:hover { background: #f5f5f3; }
+
+  .divider { border: none; border-top: 1px solid #e8e8e4; margin: 18px 0; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .thumb-box { background: #f5f5f3; border-radius: 10px; padding: 8px; text-align: center; overflow: hidden; }
+  .thumb-box img, .thumb-box canvas { width: 100%; border-radius: 6px; display: block; max-height: 200px; object-fit: contain; }
+  .thumb-label { font-size: 11px; color: #888; margin-top: 6px; }
+
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; margin-left: 4px; }
+  .badge-green { background: #edf9f1; color: #1d7a45; }
+  .badge-yellow { background: #fef9ec; color: #8a6a00; }
+
+  .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; max-height: 220px; overflow-y: auto; margin-top: 10px; padding-right: 2px; }
+  .page-thumb { border-radius: 7px; overflow: hidden; border: 1.5px solid #e0e0dc; cursor: pointer; transition: border-color .12s; }
+  .page-thumb canvas { width: 100%; display: block; }
+  .pg-num { font-size: 10px; color: #888; text-align: center; padding: 3px 0; background: #f5f5f3; }
+  .page-thumb.selected { border-color: #6a9cf8; box-shadow: 0 0 0 2px #c8dafd; }
+
+  .sel-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .btn-sm { padding: 4px 12px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #444; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .btn-sm:hover { background: #f5f5f3; }
+  .sel-count { font-size: 12px; color: #888; margin-left: auto; }
+
+  .progress-wrap { display: none; margin-top: 12px; }
+  .progress-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+  .progress-bar { height: 6px; border-radius: 3px; background: #e8e8e4; overflow: hidden; }
+  .progress-fill { height: 100%; background: #1a1a18; border-radius: 3px; transition: width .25s; }
+
+  @media (max-width: 480px) {
+    .grid2, .compare { grid-template-columns: 1fr; }
+    .row label { min-width: 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>🗜️ ปรับขนาดไฟล์</h1>
+  <p class="subtitle">รูปภาพ (JPG/PNG/WebP) และ PDF — ปรับขนาด บีบอัด ดาวน์โหลดได้ทันที</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('image')" id="tab-image">📷 รูปภาพ</button>
+    <button class="tab-btn" onclick="switchTab('pdf')" id="tab-pdf">📄 PDF</button>
+  </div>
+
+  <!-- ===== IMAGE PANEL ===== -->
+  <div id="panel-image">
+    <div class="drop-zone" id="img-drop" onclick="document.getElementById('img-input').click()">
+      <span class="drop-icon">🖼️</span>
+      <div class="drop-title">วางไฟล์ที่นี่ หรือคลิกเพื่อเลือก</div>
+      <div class="drop-sub">JPG · PNG · WebP · GIF · BMP</div>
+      <input type="file" id="img-input" accept="image/*" style="display:none">
+    </div>
+
+    <div id="img-controls" style="display:none; margin-top:1.5rem;">
+      <div class="grid2">
+        <div class="stat-card"><div class="stat-label">ขนาดเดิม</div><div class="stat-val" id="img-orig-dim">—</div><div class="stat-sub" id="img-orig-size">—</div></div>
+        <div class="stat-card"><div class="stat-label">ขนาดใหม่ (ประมาณ)</div><div class="stat-val" id="img-new-dim">—</div><div class="stat-sub" id="img-new-size">—</div></div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <div class="card-title">โหมดปรับขนาด</div>
+          <div class="row"><label>โหมด</label><select id="img-resize-mode" onchange="imgModeChange()"><option value="percent">เปอร์เซ็นต์ (%)</option><option value="px">กำหนดขนาด (px)</option><option value="maxw">ความกว้างสูงสุด</option><option value="maxh">ความสูงสูงสุด</option></select></div>
+          <div id="img-mode-percent"><div class="row"><label>ขนาด</label><input type="range" id="img-pct" min="5" max="200" value="100" step="1" oninput="document.getElementById('img-pct-v').textContent=this.value+'%';imgUpdateDim()"><span class="range-val" id="img-pct-v">100%</span></div></div>
+          <div id="img-mode-px" style="display:none">
+            <div class="row"><label>ความกว้าง</label><input type="number" id="img-px-w" oninput="imgPxChange('w')"><span style="font-size:13px;color:#888;">px</span></div>
+            <div class="row"><label>ความสูง</label><input type="number" id="img-px-h" oninput="imgPxChange('h')"><span style="font-size:13px;color:#888;">px</span></div>
+            <div class="lock-row"><input type="checkbox" id="img-lock" checked><label for="img-lock">ล็อคสัดส่วน (aspect ratio)</label></div>
+          </div>
+          <div id="img-mode-maxw" style="display:none"><div class="row"><label>กว้างสูงสุด</label><input type="number" id="img-maxw" value="1920" oninput="imgUpdateDim()"><span style="font-size:13px;color:#888;">px</span></div></div>
+          <div id="img-mode-maxh" style="display:none"><div class="row"><label>สูงสูงสุด</label><input type="number" id="img-maxh" value="1080" oninput="imgUpdateDim()"><span style="font-size:13px;color:#888;">px</span></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Format และคุณภาพ</div>
+          <div class="row"><label>Format</label><select id="img-fmt" onchange="imgUpdateDim()"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option></select></div>
+          <div id="img-q-row" class="row"><label>คุณภาพ</label><input type="range" id="img-q" min="1" max="100" value="90" step="1" oninput="document.getElementById('img-q-v').textContent=this.value+'%';imgUpdateDim()"><span class="range-val" id="img-q-v">90%</span></div>
+        </div>
+      </div>
+
+      <button class="btn-main" onclick="imgProcess()">⚡ ปรับขนาด</button>
+    </div>
+
+    <div id="img-output" style="display:none; margin-top:1.5rem;">
+      <hr class="divider">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#444;">ผลลัพธ์</div>
+      <div class="compare">
+        <div class="thumb-box"><img id="img-orig-thumb" src="" alt="ต้นฉบับ"><div class="thumb-label">ต้นฉบับ · <span id="img-os2">—</span></div></div>
+        <div class="thumb-box"><canvas id="img-out-canvas"></canvas><div class="thumb-label">ผลลัพธ์ · <span id="img-ns2">—</span><span class="badge" id="img-chg"></span></div></div>
+      </div>
+      <button class="btn-dl" onclick="imgDownload()">⬇️ ดาวน์โหลดไฟล์</button>
+      <button class="btn-reset" onclick="imgReset()">🔄 เริ่มใหม่</button>
+    </div>
+  </div>
+
+  <!-- ===== PDF PANEL ===== -->
+  <div id="panel-pdf" style="display:none;">
+    <div class="drop-zone" id="pdf-drop" onclick="document.getElementById('pdf-input').click()">
+      <span class="drop-icon">📄</span>
+      <div class="drop-title">วางไฟล์ PDF หรือคลิกเพื่อเลือก</div>
+      <div class="drop-sub">รองรับ .pdf ทุกชนิด</div>
+      <input type="file" id="pdf-input" accept=".pdf,application/pdf" style="display:none">
+    </div>
+
+    <div id="pdf-controls" style="display:none; margin-top:1.5rem;">
+      <div class="grid2">
+        <div class="stat-card"><div class="stat-label">จำนวนหน้า</div><div class="stat-val" id="pdf-pages">—</div><div class="stat-sub" id="pdf-orig-size">—</div></div>
+        <div class="stat-card"><div class="stat-label">ประมาณขนาด Output</div><div class="stat-val" id="pdf-est-size">—</div><div class="stat-sub" id="pdf-est-label">—</div></div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <div class="card-title">ตัวเลือกการบีบอัด</div>
+          <div class="row"><label>คุณภาพหน้า</label><input type="range" id="pdf-q" min="20" max="100" value="80" step="5" oninput="document.getElementById('pdf-q-v').textContent=this.value+'%';pdfEstimate()"><span class="range-val" id="pdf-q-v">80%</span></div>
+          <div class="row"><label>ความละเอียด DPI</label><select id="pdf-dpi" onchange="pdfEstimate()"><option value="72">72 DPI (เล็กสุด)</option><option value="96">96 DPI</option><option value="150" selected>150 DPI (แนะนำ)</option><option value="200">200 DPI</option><option value="300">300 DPI (คมชัด)</option></select></div>
+          <div class="row"><label>Format หน้า</label><select id="pdf-fmt"><option value="jpeg">JPEG (เล็กกว่า)</option><option value="png">PNG (คงคุณภาพ)</option></select></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">เลือกหน้าที่ต้องการ</div>
+          <div class="sel-bar">
+            <button class="btn-sm" onclick="pdfSelAll(true)">เลือกทั้งหมด</button>
+            <button class="btn-sm" onclick="pdfSelAll(false)">ยกเลิกทั้งหมด</button>
+            <span class="sel-count" id="pdf-sel-count">—</span>
+          </div>
+          <div class="page-grid" id="pdf-page-grid"></div>
+        </div>
+      </div>
+
+      <button class="btn-main" id="pdf-process-btn" onclick="pdfProcess()">⚡ สร้าง PDF</button>
+      <div class="progress-wrap" id="pdf-progress">
+        <div class="progress-label" id="pdf-progress-label">กำลังประมวลผล...</div>
+        <div class="progress-bar"><div class="progress-fill" id="pdf-progress-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div id="pdf-output" style="display:none; margin-top:1.5rem;">
+      <hr class="divider">
+      <div class="grid2">
+        <div class="stat-card"><div class="stat-label">ต้นฉบับ</div><div class="stat-val" id="pdf-os2">—</div></div>
+        <div class="stat-card"><div class="stat-label">ผลลัพธ์</div><div class="stat-val" id="pdf-ns2">—</div><span class="badge" id="pdf-chg" style="margin-top:4px;display:inline-block;"></span></div>
+      </div>
+      <button class="btn-dl" id="pdf-dl-btn">⬇️ ดาวน์โหลด PDF</button>
+      <button class="btn-reset" onclick="pdfReset()">🔄 เริ่มใหม่</button>
+    </div>
+  </div>
+
+  <p style="text-align:center;font-size:11px;color:#bbb;margin-top:2.5rem;">ไฟล์ทั้งหมดประมวลผลในเบราว์เซอร์ของคุณ ไม่มีการอัปโหลดไปยังเซิร์ฟเวอร์</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+function switchTab(t) {
+  document.getElementById('panel-image').style.display = t === 'image' ? '' : 'none';
+  document.getElementById('panel-pdf').style.display = t === 'pdf' ? '' : 'none';
+  document.getElementById('tab-image').classList.toggle('active', t === 'image');
+  document.getElementById('tab-pdf').classList.toggle('active', t === 'pdf');
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+/* ====== IMAGE ====== */
+let imgOrig = null, imgFile = null, imgW = 0, imgH = 0, imgBytes = 0;
+const imgDZ = document.getElementById('img-drop');
+imgDZ.addEventListener('dragover', e => { e.preventDefault(); imgDZ.classList.add('drag-over'); });
+imgDZ.addEventListener('dragleave', () => imgDZ.classList.remove('drag-over'));
+imgDZ.addEventListener('drop', e => { e.preventDefault(); imgDZ.classList.remove('drag-over'); imgLoad(e.dataTransfer.files[0]); });
+document.getElementById('img-input').addEventListener('change', e => imgLoad(e.target.files[0]));
+
+function imgLoad(f) {
+  if (!f || !f.type.startsWith('image/')) return;
+  imgFile = f; imgBytes = f.size;
+  const r = new FileReader();
+  r.onload = ev => {
+    const i = new Image();
+    i.onload = () => {
+      imgOrig = i; imgW = i.naturalWidth; imgH = i.naturalHeight;
+      document.getElementById('img-orig-dim').textContent = imgW + ' × ' + imgH + ' px';
+      document.getElementById('img-orig-size').textContent = fmtSize(imgBytes);
+      document.getElementById('img-orig-thumb').src = ev.target.result;
+      document.getElementById('img-px-w').value = imgW;
+      document.getElementById('img-px-h').value = imgH;
+      document.getElementById('img-controls').style.display = 'block';
+      document.getElementById('img-output').style.display = 'none';
+      imgUpdateDim();
+    };
+    i.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+}
+
+function imgModeChange() {
+  const m = document.getElementById('img-resize-mode').value;
+  ['percent', 'px', 'maxw', 'maxh'].forEach(id => {
+    document.getElementById('img-mode-' + id).style.display = (id === m ? '' : 'none');
+  });
+  imgUpdateDim();
+}
+
+function imgGetDims() {
+  if (!imgOrig) return [0, 0];
+  const m = document.getElementById('img-resize-mode').value;
+  const ratio = imgW / imgH;
+  if (m === 'percent') { const p = parseInt(document.getElementById('img-pct').value) / 100; return [Math.round(imgW * p), Math.round(imgH * p)]; }
+  if (m === 'px') return [parseInt(document.getElementById('img-px-w').value) || imgW, parseInt(document.getElementById('img-px-h').value) || imgH];
+  if (m === 'maxw') { const mw = parseInt(document.getElementById('img-maxw').value) || imgW; return imgW <= mw ? [imgW, imgH] : [mw, Math.round(mw / ratio)]; }
+  const mh = parseInt(document.getElementById('img-maxh').value) || imgH; return imgH <= mh ? [imgW, imgH] : [Math.round(mh * ratio), mh];
+}
+
+function imgUpdateDim() {
+  if (!imgOrig) return;
+  const [w, h] = imgGetDims();
+  document.getElementById('img-new-dim').textContent = w + ' × ' + h + ' px';
+  const fmt = document.getElementById('img-fmt').value;
+  const q = parseInt(document.getElementById('img-q').value) / 100;
+  const est = fmt === 'png' ? w * h * 4 * 0.5 : w * h * 3 * (1 - q * 0.85);
+  document.getElementById('img-new-size').textContent = '≈ ' + fmtSize(Math.max(est, 1024));
+  document.getElementById('img-q-row').style.display = fmt === 'png' ? 'none' : '';
+}
+
+function imgPxChange(side) {
+  if (!imgOrig) return;
+  if (document.getElementById('img-lock').checked) {
+    const ratio = imgW / imgH;
+    if (side === 'w') { const w = parseInt(document.getElementById('img-px-w').value) || imgW; document.getElementById('img-px-h').value = Math.round(w / ratio); }
+    else { const h = parseInt(document.getElementById('img-px-h').value) || imgH; document.getElementById('img-px-w').value = Math.round(h * ratio); }
+  }
+  imgUpdateDim();
+}
+
+function imgProcess() {
+  if (!imgOrig) return;
+  const [w, h] = imgGetDims();
+  const cv = document.getElementById('img-out-canvas');
+  cv.width = w; cv.height = h;
+  cv.getContext('2d').drawImage(imgOrig, 0, 0, w, h);
+  const fmt = document.getElementById('img-fmt').value;
+  const q = parseInt(document.getElementById('img-q').value) / 100;
+  const du = cv.toDataURL('image/' + fmt, q);
+  const nb = atob(du.split(',')[1]).length;
+  document.getElementById('img-ns2').textContent = fmtSize(nb);
+  document.getElementById('img-os2').textContent = fmtSize(imgBytes);
+  const d = Math.round((nb / imgBytes) * 100);
+  const ch = document.getElementById('img-chg');
+  if (d < 100) { ch.textContent = '−' + (100 - d) + '%'; ch.className = 'badge badge-green'; }
+  else { ch.textContent = '+' + (d - 100) + '%'; ch.className = 'badge badge-yellow'; }
+  document.getElementById('img-output').style.display = 'block';
+  document.getElementById('img-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function imgDownload() {
+  const cv = document.getElementById('img-out-canvas');
+  const fmt = document.getElementById('img-fmt').value;
+  const q = parseInt(document.getElementById('img-q').value) / 100;
+  const a = document.createElement('a');
+  a.href = cv.toDataURL('image/' + fmt, q);
+  a.download = (imgFile ? imgFile.name.replace(/\.[^.]+$/, '') : 'output') + '_resized.' + (fmt === 'jpeg' ? 'jpg' : fmt);
+  a.click();
+}
+
+function imgReset() {
+  imgOrig = null; imgFile = null;
+  document.getElementById('img-controls').style.display = 'none';
+  document.getElementById('img-output').style.display = 'none';
+  document.getElementById('img-input').value = '';
+}
+
+/* ====== PDF ====== */
+let pdfDoc = null, pdfFile = null, pdfBytes = 0, pdfSelected = [], pdfTotalPages = 0, pdfOutputBlob = null;
+const pdfDZ = document.getElementById('pdf-drop');
+pdfDZ.addEventListener('dragover', e => { e.preventDefault(); pdfDZ.classList.add('drag-over'); });
+pdfDZ.addEventListener('dragleave', () => pdfDZ.classList.remove('drag-over'));
+pdfDZ.addEventListener('drop', e => { e.preventDefault(); pdfDZ.classList.remove('drag-over'); pdfLoad(e.dataTransfer.files[0]); });
+document.getElementById('pdf-input').addEventListener('change', e => pdfLoad(e.target.files[0]));
+
+async function pdfLoad(f) {
+  if (!f) return;
+  pdfFile = f; pdfBytes = f.size;
+  const ab = await f.arrayBuffer();
+  pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+  pdfTotalPages = pdfDoc.numPages;
+  pdfSelected = Array.from({ length: pdfTotalPages }, (_, i) => i + 1);
+  document.getElementById('pdf-pages').textContent = pdfTotalPages + ' หน้า';
+  document.getElementById('pdf-orig-size').textContent = fmtSize(pdfBytes);
+  pdfEstimate();
+  await renderPageThumbs();
+  document.getElementById('pdf-controls').style.display = 'block';
+  document.getElementById('pdf-output').style.display = 'none';
+  pdfOutputBlob = null;
+}
+
+function pdfEstimate() {
+  const dpi = parseInt(document.getElementById('pdf-dpi').value);
+  const q = parseInt(document.getElementById('pdf-q').value) / 100;
+  const fmt = document.getElementById('pdf-fmt').value;
+  const sel = pdfSelected.length;
+  const bpp = fmt === 'png' ? 4 * 0.5 : 3 * (1 - q * 0.85);
+  const wPx = Math.round(595 * (dpi / 72));
+  const hPx = Math.round(842 * (dpi / 72));
+  const est = sel * wPx * hPx * bpp;
+  document.getElementById('pdf-est-size').textContent = '≈ ' + fmtSize(Math.max(est, 1024));
+  document.getElementById('pdf-est-label').textContent = sel + ' / ' + pdfTotalPages + ' หน้าที่เลือก';
+}
+
+async function renderPageThumbs() {
+  const grid = document.getElementById('pdf-page-grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= pdfTotalPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    const vp = page.getViewport({ scale: 0.3 });
+    const cv = document.createElement('canvas');
+    cv.width = vp.width; cv.height = vp.height;
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    const box = document.createElement('div');
+    box.className = 'page-thumb selected';
+    box.dataset.page = i;
+    box.appendChild(cv);
+    const lbl = document.createElement('div');
+    lbl.className = 'pg-num'; lbl.textContent = i;
+    box.appendChild(lbl);
+    box.onclick = () => pdfTogglePage(i, box);
+    grid.appendChild(box);
+  }
+  pdfUpdateSelCount();
+}
+
+function pdfTogglePage(n, el) {
+  const idx = pdfSelected.indexOf(n);
+  if (idx >= 0) { pdfSelected.splice(idx, 1); el.classList.remove('selected'); }
+  else { pdfSelected.push(n); pdfSelected.sort((a, b) => a - b); el.classList.add('selected'); }
+  pdfUpdateSelCount(); pdfEstimate();
+}
+
+function pdfSelAll(v) {
+  pdfSelected = v ? Array.from({ length: pdfTotalPages }, (_, i) => i + 1) : [];
+  document.querySelectorAll('.page-thumb').forEach(el => el.classList.toggle('selected', v));
+  pdfUpdateSelCount(); pdfEstimate();
+}
+
+function pdfUpdateSelCount() {
+  document.getElementById('pdf-sel-count').textContent = 'เลือกแล้ว ' + pdfSelected.length + ' หน้า';
+}
+
+async function pdfProcess() {
+  if (!pdfDoc || pdfSelected.length === 0) return;
+  const btn = document.getElementById('pdf-process-btn');
+  btn.disabled = true;
+  document.getElementById('pdf-progress').style.display = 'block';
+  const dpi = parseInt(document.getElementById('pdf-dpi').value);
+  const q = parseInt(document.getElementById('pdf-q').value) / 100;
+  const fmt = document.getElementById('pdf-fmt').value;
+  const scale = dpi / 72;
+  const { jsPDF } = window.jspdf;
+  let doc = null;
+
+  for (let si = 0; si < pdfSelected.length; si++) {
+    const pageNum = pdfSelected[si];
+    const pct = Math.round((si / pdfSelected.length) * 100);
+    document.getElementById('pdf-progress-fill').style.width = pct + '%';
+    document.getElementById('pdf-progress-label').textContent = 'กำลังประมวลผลหน้า ' + pageNum + ' / ' + pdfSelected[pdfSelected.length - 1] + '...';
+    const page = await pdfDoc.getPage(pageNum);
+    const vp = page.getViewport({ scale });
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    const imgData = cv.toDataURL('image/' + fmt, q);
+    const mmW = (vp.width / dpi) * 25.4;
+    const mmH = (vp.height / dpi) * 25.4;
+    if (!doc) { doc = new jsPDF({ unit: 'mm', format: [mmW, mmH], orientation: mmW > mmH ? 'landscape' : 'portrait' }); }
+    else { doc.addPage([mmW, mmH], mmW > mmH ? 'landscape' : 'portrait'); }
+    doc.addImage(imgData, fmt === 'png' ? 'PNG' : 'JPEG', 0, 0, mmW, mmH, undefined, 'FAST');
+  }
+
+  document.getElementById('pdf-progress-fill').style.width = '100%';
+  document.getElementById('pdf-progress-label').textContent = 'เสร็จสิ้น! ✓';
+  pdfOutputBlob = doc.output('blob');
+  const outBytes = pdfOutputBlob.size;
+  document.getElementById('pdf-os2').textContent = fmtSize(pdfBytes);
+  document.getElementById('pdf-ns2').textContent = fmtSize(outBytes);
+  const d = Math.round((outBytes / pdfBytes) * 100);
+  const ch = document.getElementById('pdf-chg');
+  if (d < 100) { ch.textContent = '−' + (100 - d) + '%'; ch.className = 'badge badge-green'; }
+  else { ch.textContent = '+' + (d - 100) + '%'; ch.className = 'badge badge-yellow'; }
+  document.getElementById('pdf-dl-btn').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(pdfOutputBlob);
+    a.download = (pdfFile ? pdfFile.name.replace(/\.pdf$/i, '') : 'output') + '_compressed.pdf';
+    a.click();
+  };
+  document.getElementById('pdf-output').style.display = 'block';
+  document.getElementById('pdf-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  btn.disabled = false;
+  setTimeout(() => document.getElementById('pdf-progress').style.display = 'none', 2000);
+}
+
+function pdfReset() {
+  pdfDoc = null; pdfFile = null; pdfOutputBlob = null;
+  document.getElementById('pdf-controls').style.display = 'none';
+  document.getElementById('pdf-output').style.display = 'none';
+  document.getElementById('pdf-input').value = '';
+  document.getElementById('pdf-page-grid').innerHTML = '';
+}
+</script>
+</body>
+</html>
