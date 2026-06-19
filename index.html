@@ -97,6 +97,14 @@
   .progress-bar { height: 6px; border-radius: 3px; background: #e8e8e4; overflow: hidden; }
   .progress-fill { height: 100%; background: #1a1a18; border-radius: 3px; transition: width .25s; }
 
+  .stepper { display: flex; align-items: center; gap: 0; flex: 1; }
+  .stepper-btn { width: 34px; height: 36px; border: 1px solid #ddd; background: #f5f5f3; color: #1a1a18; font-size: 18px; font-weight: 500; cursor: pointer; transition: background .12s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .stepper-btn:hover { background: #e8e8e4; }
+  .stepper-btn.left { border-radius: 8px 0 0 8px; border-right: none; }
+  .stepper-btn.right { border-radius: 0 8px 8px 0; border-left: none; }
+  .stepper input[type="number"] { border-radius: 0; border-left: none; border-right: none; text-align: center; min-width: 0; flex: 1; }
+  .stepper input[type="number"]:focus { border-color: #6a9cf8; z-index: 1; position: relative; }
+
   @media (max-width: 480px) {
     .grid2, .compare { grid-template-columns: 1fr; }
     .row label { min-width: 80px; }
@@ -143,9 +151,26 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Format และคุณภาพ</div>
+          <div class="card-title">Format คุณภาพ และ DPI</div>
           <div class="row"><label>Format</label><select id="img-fmt" onchange="imgUpdateDim()"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option></select></div>
-          <div id="img-q-row" class="row"><label>คุณภาพ</label><input type="range" id="img-q" min="1" max="100" value="90" step="1" oninput="document.getElementById('img-q-v').textContent=this.value+'%';imgUpdateDim()"><span class="range-val" id="img-q-v">90%</span></div>
+          <div id="img-q-row" class="row">
+            <label>คุณภาพ</label>
+            <div class="stepper">
+              <button class="stepper-btn left" onclick="imgStep('q',-5)">−</button>
+              <input type="number" id="img-q" min="1" max="100" value="90" oninput="imgClamp('q',1,100);imgUpdateDim()">
+              <button class="stepper-btn right" onclick="imgStep('q',5)">+</button>
+            </div>
+            <span class="range-val" id="img-q-v">90%</span>
+          </div>
+          <div id="img-dpi-row" class="row">
+            <label>DPI</label>
+            <div class="stepper">
+              <button class="stepper-btn left" onclick="imgStep('dpi',-10)">−</button>
+              <input type="number" id="img-dpi" min="36" max="600" value="96" oninput="imgClamp('dpi',36,600);imgUpdateDim()">
+              <button class="stepper-btn right" onclick="imgStep('dpi',10)">+</button>
+            </div>
+            <span class="range-val" id="img-dpi-v">96 DPI</span>
+          </div>
         </div>
       </div>
 
@@ -287,15 +312,35 @@ function imgGetDims() {
   const mh = parseInt(document.getElementById('img-maxh').value) || imgH; return imgH <= mh ? [imgW, imgH] : [Math.round(mh * ratio), mh];
 }
 
+function imgStep(field, delta) {
+  const el = document.getElementById('img-' + field);
+  const min = parseInt(el.min), max = parseInt(el.max);
+  el.value = Math.min(max, Math.max(min, (parseInt(el.value) || 0) + delta));
+  imgClamp(field, min, max);
+  imgUpdateDim();
+}
+function imgClamp(field, min, max) {
+  const el = document.getElementById('img-' + field);
+  const v = Math.min(max, Math.max(min, parseInt(el.value) || min));
+  el.value = v;
+  if (field === 'q') document.getElementById('img-q-v').textContent = v + '%';
+  if (field === 'dpi') document.getElementById('img-dpi-v').textContent = v + ' DPI';
+}
 function imgUpdateDim() {
   if (!imgOrig) return;
   const [w, h] = imgGetDims();
   document.getElementById('img-new-dim').textContent = w + ' × ' + h + ' px';
   const fmt = document.getElementById('img-fmt').value;
   const q = parseInt(document.getElementById('img-q').value) / 100;
-  const est = fmt === 'png' ? w * h * 4 * 0.5 : w * h * 3 * (1 - q * 0.85);
+  const dpi = parseInt(document.getElementById('img-dpi').value) || 96;
+  document.getElementById('img-q-v').textContent = Math.round(q * 100) + '%';
+  document.getElementById('img-dpi-v').textContent = dpi + ' DPI';
+  const scale = dpi / 96;
+  const sw = Math.round(w * scale), sh = Math.round(h * scale);
+  const est = fmt === 'png' ? sw * sh * 4 * 0.5 : sw * sh * 3 * (1 - q * 0.85);
   document.getElementById('img-new-size').textContent = '≈ ' + fmtSize(Math.max(est, 1024));
   document.getElementById('img-q-row').style.display = fmt === 'png' ? 'none' : '';
+  document.getElementById('img-dpi-row').style.display = fmt === 'png' ? 'none' : '';
 }
 
 function imgPxChange(side) {
@@ -311,9 +356,12 @@ function imgPxChange(side) {
 function imgProcess() {
   if (!imgOrig) return;
   const [w, h] = imgGetDims();
+  const dpi = parseInt(document.getElementById('img-dpi').value) || 96;
+  const scale = dpi / 96;
+  const sw = Math.round(w * scale), sh = Math.round(h * scale);
   const cv = document.getElementById('img-out-canvas');
-  cv.width = w; cv.height = h;
-  cv.getContext('2d').drawImage(imgOrig, 0, 0, w, h);
+  cv.width = sw; cv.height = sh;
+  cv.getContext('2d').drawImage(imgOrig, 0, 0, sw, sh);
   const fmt = document.getElementById('img-fmt').value;
   const q = parseInt(document.getElementById('img-q').value) / 100;
   const du = cv.toDataURL('image/' + fmt, q);
